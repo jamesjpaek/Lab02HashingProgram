@@ -1,2 +1,2 @@
-# ITIS-3200-002-Spring-2026
+# Lab02HashingProgram
 labs, coding projects, etc.
