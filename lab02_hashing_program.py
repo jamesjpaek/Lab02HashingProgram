@@ -41,7 +41,7 @@ def generate_hash_table():
     with open(os.path.join(directory, HASH_FILE), "w") as f:
         json.dump(table, f, indent=2)
 
-    print("Hash table generated")
+    print("Hash table generated, proceed")
 
 
 def verify_hashes():
@@ -49,7 +49,7 @@ def verify_hashes():
     path = os.path.abspath(path)
 
     if not os.path.isfile(path):
-        print("Invalid hash table path.")
+        print("Invalid ht - hash table path.")
         return
 
     with open(path, "r") as f:
@@ -78,14 +78,14 @@ def main():
     print("1) Generate a new hash table")
     print("2) Verify hashes")
 
-    choice = input("Select an option (1 or 2): ").strip()
+    choice = input("Pick an option (1 or 2): ").strip()
 
     if choice == "1":
         generate_hash_table()
     elif choice == "2":
         verify_hashes()
     else:
-        print("Invalid choice.")
+        print("Error, invalid directory, rerun the terminal.")
 
 
 main()
