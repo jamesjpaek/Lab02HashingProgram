@@ -2,13 +2,11 @@ import os
 import json
 import hashlib
 
-TABLE_NAME = "hash_table.json"
+HASH_TABLE_FILE = "hash_table.json"
 CHUNK_SIZE = 1024 * 1024  # 1MB
 
 
-# Hashing
 def hash_file(filepath):
-    """Return SHA-256 hash of file contents."""
     h = hashlib.sha256()
     with open(filepath, "rb") as f:
         while True:
@@ -19,20 +17,20 @@ def hash_file(filepath):
     return h.hexdigest()
 
 
-def get_all_files(directory):
-    """Return a list of full file paths in the directory (including subfolders)."""
+def traverse_directory(directory):
     files_list = []
     for root, _, files in os.walk(directory):
         for name in files:
             full_path = os.path.join(root, name)
-            # Skip the hash table if it exists in the same folder
-            if os.path.basename(full_path) == TABLE_NAME:
+
+            # don't hash our own json table if it's inside the folder
+            if os.path.basename(full_path) == HASH_TABLE_FILE:
                 continue
+
             files_list.append(os.path.abspath(full_path))
     return files_list
 
 
-# Option 1: Generate Table
 def generate_table():
     directory = input("Enter directory path to hash: ").strip().strip('"')
     directory = os.path.abspath(directory)
@@ -41,31 +39,23 @@ def generate_table():
         print("Invalid directory.")
         return
 
-    filepaths = get_all_files(directory)
+    filepaths = traverse_directory(directory)
 
-    table = {
-        "root_directory": directory,
-        "files": []
-    }
+    table = {"root_directory": directory, "files": []}
 
     for fp in filepaths:
         try:
-            table["files"].append({
-                "filepath": fp,
-                "hash": hash_file(fp)
-            })
+            table["files"].append({"filepath": fp, "hash": hash_file(fp)})
         except Exception:
             print(f"Skipped: {fp}")
 
-    out_path = os.path.join(directory, TABLE_NAME)
+    out_path = os.path.join(directory, HASH_TABLE_FILE)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(table, f, indent=2)
 
     print("Hash table generated")
 
 
-# Option 2: Verify Hashes
-# BONUS: Detect rename if hash matches
 def verify_hashes():
     json_path = input("Enter path to hash table (.json): ").strip().strip('"')
     json_path = os.path.abspath(json_path)
@@ -80,15 +70,11 @@ def verify_hashes():
     root_dir = table["root_directory"]
     stored = table["files"]
 
-    # stored maps
     stored_paths = {x["filepath"] for x in stored}
     stored_hash_by_path = {x["filepath"]: x["hash"] for x in stored}
-    stored_hash_to_path = {x["hash"]: x["filepath"] for x in stored}  # for rename detection
 
-    # current scan
-    current_files = set(get_all_files(root_dir))
+    current_files = set(traverse_directory(root_dir))
 
-    # Deleted + New
     deleted_files = sorted(list(stored_paths - current_files))
     new_files = sorted(list(current_files - stored_paths))
 
@@ -98,7 +84,7 @@ def verify_hashes():
     for fp in new_files:
         print(f"{fp} new file added")
 
-    # Validate files that still exist (same path)
+    # validate same-path files
     for fp in sorted(list(current_files & stored_paths)):
         try:
             current_hash = hash_file(fp)
@@ -109,11 +95,9 @@ def verify_hashes():
         except Exception:
             print(f"{fp} hash is invalid")
 
-    # BONUS: Rename detection
-    # If a file was "deleted" but a "new" file has the same hash, update the table
+    # BONUS: rename detection (deleted path + new path, same hash)
     updated = False
     if deleted_files and new_files:
-        # hash all new files once
         new_hashes = {}
         for fp in new_files:
             try:
@@ -126,7 +110,6 @@ def verify_hashes():
             if not old_hash:
                 continue
 
-            # find new file with same hash
             match_new = None
             for new_fp, new_h in new_hashes.items():
                 if new_h == old_hash:
@@ -134,17 +117,16 @@ def verify_hashes():
                     break
 
             if match_new:
-                # update stored table entry filepath
                 for entry in stored:
                     if entry["filepath"] == old_fp:
                         entry["filepath"] = match_new
                         updated = True
                         break
+
                 print(f"Renamed file detected: {old_fp} -> {match_new}")
                 new_hashes.pop(match_new, None)
 
     if updated:
-        # write updated table back
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(table, f, indent=2)
         print("Hash table updated (rename fix)")
@@ -152,7 +134,6 @@ def verify_hashes():
     print("Verification complete")
 
 
-# Main
 def main():
     print("Lab02HashingProgram")
     print("1) Generate a new hash table")
